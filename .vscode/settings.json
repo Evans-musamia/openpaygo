@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "opaygo_core.h": "c",
+        "types.h": "c",
+        "stdio.h": "c",
+        "restricted_digit_set_mode.h": "c"
+    }
+}
