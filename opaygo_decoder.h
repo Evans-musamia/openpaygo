@@ -7,8 +7,6 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include <stdbool.h> // Include stdbool.h for bool type
-
 #include "opaygo_core.h"
 #include "opaygo_value_utils.h"
 #include "restricted_digit_set_mode.h"
@@ -18,6 +16,15 @@
 #define MAX_UNUSED_OLDER_TOKENS 16 // Maximum of 16 (8 tokens of the same type)
 #define COUNTER_SYNC_VALUE 999
 #define PAYG_DISABLE_VALUE 998
+
+enum TokenType {
+    ADD_TIME = 1,
+    SET_TIME = 2,
+    DISABLE_PAYG = 3,
+    COUNTER_SYNC = 4,
+    INVALID = 10,
+    ALREADY_USED = 11
+};
 
 struct TokenDataStruct {
     int Value;
