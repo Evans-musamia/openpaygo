@@ -4,14 +4,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define CHECK_BIT(variable, position) ((variable) & (1 << (position)))
-#define SET_BIT(variable, position, value) ((variable & ~(1 << position)) | (value << position))
-
-// EEPROM addresses
-#define EEPROM_LAST_CODE_ADDRESS 0
-#define EEPROM_MAX_COUNT_ADDRESS 2
-#define EEPROM_CURRENT_TIME_ADDRESS 4
+#define SET_BIT(variable, position, value) (variable & ~(1 << position)) | (value << position)
 
 // Function to convert a 32-character hex string to a 16-byte array
 void hex_to_bytes(const char* hex_str, unsigned char* bytes) {
@@ -32,13 +28,6 @@ uint32_t GenerateStartingCode(unsigned char SECRET_KEY[16]) {
     }
     printf("Generated Starting Code: %u\n", starting_code); // Debug print
     return starting_code;
-}
-
-// Function to extract token details from the input token
-void ExtractTokenDetails(uint64_t token, int* value, uint16_t* count, uint8_t* type) {
-    *value = (token >> 48) & 0xFFFF; // Assuming value is in the upper 16 bits
-    *count = (token >> 32) & 0xFFFF; // Assuming count is in the next 16 bits
-    *type = (token >> 28) & 0xF;     // Assuming type is in the next 4 bits
 }
 
 bool IsInUsedCounts(int Count, uint16_t MaxCount, uint16_t UsedCounts) {
@@ -100,20 +89,13 @@ TokenData GetDataFromToken(uint64_t InputToken, uint16_t *MaxCount, uint16_t *Us
 #ifdef RESTRICTED_DIGIT_SET_MODE
     InputToken = ConvertFromFourDigitToken(InputToken);
 #endif
-    int token_value;
-    uint16_t token_count;
-    uint8_t token_type;
-
-    // Extract token details
-    ExtractTokenDetails(InputToken, &token_value, &token_count, &token_type);
-
     uint16_t StartingCodeBase = GetTokenBase(StartingCode);
     uint16_t TokenBase = GetTokenBase((uint32_t)InputToken);
     uint32_t CurrentToken = PutBaseInToken(StartingCode, TokenBase);
     uint32_t MaskedToken;
     int MaxCountTry;
     int Value = DecodeBase(StartingCodeBase, TokenBase);
-    TokenData output = { .Value = token_value, .Count = token_count, .MaskedToken = 0, .CurrentToken = 0, .TokenBase = TokenBase, .StartingCodeBase = StartingCodeBase, .TokenType = token_type };
+    TokenData output = { .Value = -1, .Count = 0, .MaskedToken = 0, .CurrentToken = 0, .TokenBase = TokenBase, .StartingCodeBase = StartingCodeBase };
     bool ValidOlderToken = false;
 
     printf("StartingCodeBase: %u, TokenBase: %u\n", StartingCodeBase, TokenBase); // Debug print
@@ -151,27 +133,41 @@ TokenData GetDataFromToken(uint64_t InputToken, uint16_t *MaxCount, uint16_t *Us
     return output;
 }
 
-// EEPROM simulation functions
-uint16_t readEEPROM16(int address) {
-    return 0; // Replace with actual EEPROM read function
+// Function to save data to a CSV file
+void save_to_csv(const char* filename, int value, int count, uint32_t masked_token) {
+    FILE* file = fopen(filename, "a");
+    if (file == NULL) {
+        printf("Error opening file for writing.\n");
+        return;
+    }
+    fprintf(file, "%d,%d,%u\n", value, count, masked_token);
+    fclose(file);
 }
 
-void writeEEPROM16(int address, uint16_t value) {
-    // Replace with actual EEPROM write function
-}
+// Function to fetch the latest starting code from the CSV file
+uint32_t fetch_latest_starting_code(const char* filename) {
+    FILE* file = fopen(filename, "r");
+    if (file == NULL) {
+        printf("CSV file not found. Creating a new one.\n");
+        return 0;
+    }
 
-uint32_t readEEPROM32(int address) {
-    return 0; // Replace with actual EEPROM read function
-}
+    char line[256];
+    uint32_t latest_starting_code = 0;
 
-void writeEEPROM32(int address, uint32_t value) {
-    // Replace with actual EEPROM write function
-}
+    while (fgets(line, sizeof(line), file)) {
+        char* token = strtok(line, ",");
+        int value = atoi(token);
+        token = strtok(NULL, ",");
+        int count = atoi(token);
+        token = strtok(NULL, ",");
+        uint32_t masked_token = (uint32_t)strtoul(token, NULL, 10);
 
-void updateCurrentTime(int added_time) {
-    uint32_t current_time = readEEPROM32(EEPROM_CURRENT_TIME_ADDRESS);
-    current_time += added_time;
-    writeEEPROM32(EEPROM_CURRENT_TIME_ADDRESS, current_time);
+        latest_starting_code = masked_token;
+    }
+
+    fclose(file);
+    return latest_starting_code;
 }
 
 int main() {
@@ -183,57 +179,35 @@ int main() {
     unsigned char key[16];
     hex_to_bytes(hex_key, key); // Convert hex string to byte array
 
-    uint32_t lastCode = readEEPROM32(EEPROM_LAST_CODE_ADDRESS);
-    uint16_t maxCount = readEEPROM16(EEPROM_MAX_COUNT_ADDRESS);
-
-    if (lastCode == 0) {
-        lastCode = GenerateStartingCode(key);
-        writeEEPROM32(EEPROM_LAST_CODE_ADDRESS, lastCode);
-        maxCount = 0;
-        writeEEPROM16(EEPROM_MAX_COUNT_ADDRESS, maxCount);
+    uint32_t startingCode = fetch_latest_starting_code("token_data.csv");
+    if (startingCode == 0) {
+        startingCode = GenerateStartingCode(key);
+        printf("Starting Code (from generation): %u\n", startingCode); // Print the starting code
+        save_to_csv("token_data.csv", 0, 0, startingCode); // Save the first code to CSV
+    } else {
+        printf("Starting Code (from CSV): %u\n", startingCode); // Print the starting code
     }
 
+    uint16_t maxCount = 0;
     uint16_t usedCounts = 0;
 
-    while (1) {
-        TokenData result = GetDataFromToken(token, &maxCount, &usedCounts, lastCode, key);
+    TokenData result = GetDataFromToken(token, &maxCount, &usedCounts, startingCode, key);
 
-        if (result.Value == -1) {
-            printf("Invalid token!\n");
-        } else if (result.Value == -2) {
-            printf("Token already used!\n");
-        } else {
-            printf("Valid token.\n");
+    if (result.Value == -1) {
+        printf("Invalid token!\n");
+    } else if (result.Value == -2) {
+        printf("Token already used!\n");
+    } else {
+        printf("Valid token.\n");
+        printf("Decoded Value: %d\n", result.Value);
+        printf("Decoded Count: %d\n", result.Count);
+        printf("Masked Token: %u\n", result.MaskedToken);
+        printf("Current Token: %u\n", result.CurrentToken);
+        printf("Token Base: %u\n", result.TokenBase);
+        printf("Starting Code Base: %u\n", result.StartingCodeBase);
 
-            // Update EEPROM with the new last code and max count
-            lastCode = result.CurrentToken;
-            writeEEPROM32(EEPROM_LAST_CODE_ADDRESS, lastCode);
-            writeEEPROM16(EEPROM_MAX_COUNT_ADDRESS, maxCount);
-
-            // Update current time if token type is ADD_TIME or SET_TIME
-            if (result.TokenType == ADD_TIME) {
-                updateCurrentTime(result.Value);
-            } else if (result.TokenType == SET_TIME) {
-                writeEEPROM32(EEPROM_CURRENT_TIME_ADDRESS, result.Value);
-            }
-
-            // Print the last valid code, count, and value
-            printf("Last Valid Code: %u\n", lastCode);
-            printf("Last Count: %d\n", result.Count);
-            printf("Last Value: %d\n", result.Value);
-        }
-
-        // Print the last valid code, count, and value even if the token is invalid
-        printf("Last Valid Code: %u\n", lastCode);
-        printf("Last Count: %d\n", maxCount);
-        printf("Last Value: %d\n", readEEPROM32(EEPROM_CURRENT_TIME_ADDRESS));
-
-        // Break the loop if you want to exit, for example:
-        // if (some_condition) break;
-
-        // Prompt for the next token
-        printf("Enter the next token to decode: ");
-        scanf("%llu", &token);
+        // Save data to CSV
+        save_to_csv("token_data.csv", result.Value, result.Count, result.MaskedToken);
     }
 
     return 0;
