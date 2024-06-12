@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #define CHECK_BIT(variable, position) ((variable) & (1 << (position)))
-#define SET_BIT(variable, position, value) (variable & ~(1 << position)) | (value << position)
+#define SET_BIT(variable, position, value) ((variable & ~(1 << position)) | (value << position))
 
 // Function to convert a 32-character hex string to a 16-byte array
 void hex_to_bytes(const char* hex_str, unsigned char* bytes) {
@@ -98,8 +98,6 @@ TokenData GetDataFromToken(uint64_t InputToken, uint16_t *MaxCount, uint16_t *Us
     TokenData output = { .Value = -1, .Count = 0, .MaskedToken = 0, .CurrentToken = 0, .TokenBase = TokenBase, .StartingCodeBase = StartingCodeBase };
     bool ValidOlderToken = false;
 
-    printf("StartingCodeBase: %u, TokenBase: %u\n", StartingCodeBase, TokenBase); // Debug print
-
     if (Value == COUNTER_SYNC_VALUE) {
         MaxCountTry = *MaxCount + MAX_TOKEN_JUMP_COUNTER_SYNC;
     } else {
@@ -110,7 +108,6 @@ TokenData GetDataFromToken(uint64_t InputToken, uint16_t *MaxCount, uint16_t *Us
         MaskedToken = PutBaseInToken(CurrentToken, TokenBase);
         output.MaskedToken = MaskedToken;
         output.CurrentToken = CurrentToken;
-        // printf("Count: %d, MaskedToken: %u, CurrentToken: %u\n", Count, MaskedToken, CurrentToken);
 
         if (MaskedToken == InputToken) {
             if (IsCountValid(Count, *MaxCount, Value, *UsedCounts)) {
@@ -175,17 +172,17 @@ int main() {
     printf("Enter the token to decode: ");
     scanf("%llu", &token);
 
-    char hex_key[] = "236432F2318504F7236432F2318504F7";
+    char hex_key[] = "236432F2318504F7236432F2318504F6";
     unsigned char key[16];
     hex_to_bytes(hex_key, key); // Convert hex string to byte array
 
     uint32_t startingCode = fetch_latest_starting_code("token_data.csv");
     if (startingCode == 0) {
         startingCode = GenerateStartingCode(key);
-        printf("Starting Code (from generation): %u\n", startingCode); // Print the starting code
+        printf("Starting Code (from generation): %u\n", startingCode);
         save_to_csv("token_data.csv", 0, 0, startingCode); // Save the first code to CSV
     } else {
-        printf("Starting Code (from CSV): %u\n", startingCode); // Print the starting code
+        printf("Starting Code (from CSV): %u\n", startingCode);
     }
 
     uint16_t maxCount = 0;
@@ -202,9 +199,25 @@ int main() {
         printf("Decoded Value: %d\n", result.Value);
         printf("Decoded Count: %d\n", result.Count);
         printf("Masked Token: %u\n", result.MaskedToken);
-        printf("Current Token: %u\n", result.CurrentToken);
-        printf("Token Base: %u\n", result.TokenBase);
-        printf("Starting Code Base: %u\n", result.StartingCodeBase);
+
+        // Display the type of token based on the TokenType
+        switch(result.TokenType) {
+            case ADD_TIME:
+                printf("Token Type: ADD_TIME\n");
+                break;
+            case SET_TIME:
+                printf("Token Type: SET_TIME\n");
+                break;
+            case DISABLE_PAYG:
+                printf("Token Type: DISABLE_PAYG\n");
+                break;
+            case COUNTER_SYNC:
+                printf("Token Type: COUNTER_SYNC\n");
+                break;
+            default:
+                printf("Token Type: UNKNOWN\n");
+                break;
+        }
 
         // Save data to CSV
         save_to_csv("token_data.csv", result.Value, result.Count, result.MaskedToken);
