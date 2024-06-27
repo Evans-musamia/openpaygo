@@ -225,3 +225,6 @@ int main() {
 
     return 0;
 }
+
+
+// gcc -o opaygo_decoder opaygo_decoder.c siphash.c  opaygo_core.c
