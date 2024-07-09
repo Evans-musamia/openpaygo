@@ -11,9 +11,9 @@
 #include "opaygo_value_utils.h"
 #include "restricted_digit_set_mode.h"
 
-#define MAX_TOKEN_JUMP 64 // This is a jump in count so up to twice as large as the number of tokens of the same type
-#define MAX_TOKEN_JUMP_COUNTER_SYNC 100 // This is a jump in count so up to twice as large as the number of tokens
-#define MAX_UNUSED_OLDER_TOKENS 16 // Maximum of 16 (8 tokens of the same type)
+#define MAX_TOKEN_JUMP 64
+#define MAX_TOKEN_JUMP_COUNTER_SYNC 100
+#define MAX_UNUSED_OLDER_TOKENS 16
 #define COUNTER_SYNC_VALUE 999
 #define PAYG_DISABLE_VALUE 998
 
@@ -36,6 +36,13 @@ struct TokenDataStruct {
     uint8_t TokenType;
 };
 typedef struct TokenDataStruct TokenData;
+
+typedef struct TokenStateStruct {
+    uint32_t startingCode;
+    uint16_t maxCount;
+    uint16_t usedCounts;
+    struct TokenStateStruct* next;
+} TokenState;
 
 TokenData GetDataFromToken(uint64_t InputToken, uint16_t *MaxCount, uint16_t *UsedCounts, uint32_t StartingCode, unsigned char SECRET_KEY[16]);
 

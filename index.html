@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenToken & Decoder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
+        }
+        .container-wrapper {
+            display: flex;
+            width: 90%;
+            justify-content: space-between;
+        }
+        .container {
+            width: 30%;
+            margin: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        form, .form-like {
+            display: flex;
+            flex-direction: column;
+        }
+        label, input, button {
+            margin-bottom: 10px;
+        }
+        input, button {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .hidden {
+            display: none;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-wrapper">
+        <!-- Other sections omitted for brevity -->
+
+        <div class="container">
+            <h1>C Token Decoder</h1>
+            <form id="cTokenForm">
+                <label for="cToken">Token:</label>
+                <input type="text" id="cToken" name="token" required>
+                <label for="cOemId">OEM ID:</label>
+                <input type="text" id="cOemId" name="oem_id" required>
+                <button type="submit">Submit</button>
+                <button type="button" onclick="fetchCLatestRecord()">Fetch Latest Record</button>
+            </form>
+            <div id="cResponse" class="response"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('cTokenForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const token = document.getElementById('cToken').value;
+            const oemId = document.getElementById('cOemId').value;
+            fetch(`http://localhost:8080?token=${token}&oem_id=${encodeURIComponent(oemId)}`)
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('cResponse').innerText = data;
+                })
+                .catch(error => console.error('Error:', error));
+        });
+
+        function fetchCLatestRecord() {
+            const oemId = document.getElementById('cOemId').value;
+            fetch(`http://localhost:8080/latest?oem_id=${encodeURIComponent(oemId)}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.text();
+                })
+                .then(data => {
+                    document.getElementById('cResponse').innerText = data;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('cResponse').innerText = 'Error occurred. Please try again.';
+                });
+        }
+    </script>
+</body>
+</html>
