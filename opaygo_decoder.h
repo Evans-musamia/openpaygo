@@ -11,7 +11,7 @@
 #include "opaygo_value_utils.h"
 #include "restricted_digit_set_mode.h"
 
-#define MAX_TOKEN_JUMP 64
+#define MAX_TOKEN_JUMP 4
 #define MAX_TOKEN_JUMP_COUNTER_SYNC 100
 #define MAX_UNUSED_OLDER_TOKENS 16
 #define COUNTER_SYNC_VALUE 999
@@ -41,6 +41,7 @@ typedef struct TokenStateStruct {
     uint32_t startingCode;
     uint16_t maxCount;
     uint16_t usedCounts;
+    int storedValue;
     struct TokenStateStruct* next;
 } TokenState;
 

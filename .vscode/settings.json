@@ -4,7 +4,8 @@
         "types.h": "c",
         "stdio.h": "c",
         "restricted_digit_set_mode.h": "c",
-        "opaygo_value_utils.h": "c"
+        "opaygo_value_utils.h": "c",
+        "stdint.h": "c"
     },
     "liveServer.settings.port": 5502
 }

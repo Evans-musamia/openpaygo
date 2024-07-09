@@ -113,15 +113,17 @@ TokenState* get_token_state(uint32_t startingCode) {
     newState->startingCode = startingCode;
     newState->maxCount = 0;
     newState->usedCounts = 0;
+    newState->storedValue = 0;
     newState->next = tokenStates;
     tokenStates = newState;
     return newState;
 }
 
-void update_token_state(uint32_t startingCode, uint16_t maxCount, uint16_t usedCounts) {
+void update_token_state(uint32_t startingCode, uint16_t maxCount, uint16_t usedCounts, int storedValue) {
     TokenState* state = get_token_state(startingCode);
     state->maxCount = maxCount;
     state->usedCounts = usedCounts;
+    state->storedValue = storedValue;
 }
 
 TokenData GetDataFromToken(uint64_t InputToken, uint16_t *MaxCount, uint16_t *UsedCounts, uint32_t StartingCode, unsigned char SECRET_KEY[16]) {
@@ -204,6 +206,13 @@ int main() {
             printf("Decoded Count: %d\n", result.Count);
             printf("Masked Token: %u\n", result.MaskedToken);
 
+            // Update and display the stored value based on the token type
+            if (result.TokenType == ADD_TIME) {
+                state->storedValue += result.Value;
+            } else if (result.TokenType == SET_TIME) {
+                state->storedValue = result.Value;
+            }
+
             // Display the type of token based on the TokenType
             switch(result.TokenType) {
                 case ADD_TIME:
@@ -222,9 +231,14 @@ int main() {
                     printf("Invalid Token Type!\n");
                     break;
             }
+
+            // Print the updated parameters
+            printf("Stored Value: %d\n", state->storedValue);
+            printf("Max Count: %d\n", state->maxCount);
+            printf("Used Counts: %d\n", state->usedCounts);
         }
 
-        update_token_state(startingCode, state->maxCount, state->usedCounts);
+        update_token_state(startingCode, state->maxCount, state->usedCounts, state->storedValue);
     }
 
     return 0;
